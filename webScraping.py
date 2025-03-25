@@ -1,6 +1,8 @@
 import os
 import requests
 import zipfile
+import pdfplumber
+import csv
 from bs4 import BeautifulSoup
 
 target_url = "https://www.gov.br/ans/pt-br/acesso-a-informacao/participacao-da-sociedade/atualizacao-do-rol-de-procedimentos"
@@ -32,3 +34,34 @@ with zipfile.ZipFile(zip_path, "w") as zipf:
     zipf.write(file, os.path.basename(file))
 
 print(f"Arquivos compactados em: {zip_path}")
+
+def substituir_abreviacoes(abreviacao):
+  legenda = {
+    'OD' : 'Seg. Odontológica',
+    'AMB' : 'Seg. Ambulatorial'
+  }
+  return legenda.get(abreviacao, abreviacao)
+
+pdf_path = 'downloads/Anexo_I_Rol_2021RN_465.2021_RN627L.2024.pdf'
+with pdfplumber.open(pdf_path) as pdf:
+  tabelas = []
+  for page in pdf.pages:
+    tabela = page.extract_table()
+    if tabela:
+      tabelas.extend(tabela)
+
+dados_transformados = []
+for linha in tabelas:
+  linha_transformada = [substituir_abreviacoes(celula) for celula in linha]
+  dados_transformados.append(linha_transformada)
+
+  csv_path = 'Teste_Hudson_Costa.csv'
+  with open(csv_path, 'w', newline='',encoding='utf-8') as file:
+    writer = csv.writer(file)
+    writer.writerows(dados_transformados)
+
+  zip_path = 'Teste_Hudson_Costa.zip'
+  with zipfile.ZipFile(zip_path, 'w') as zipf:
+    zipf.write(csv_path, os.path.basename(csv_path))
+
+    print(f"Arquivo CSV compactado em: {zip_path}")
